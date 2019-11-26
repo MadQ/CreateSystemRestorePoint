@@ -11,6 +11,9 @@ using System.Windows.Forms;
 
 namespace CreateSystemRestorePoint
 {
+	
+	
+	
 	class Program
 	{
 		[STAThread]
@@ -18,25 +21,43 @@ namespace CreateSystemRestorePoint
 		{
 			if(HelpShown(args))
 				return 0;
+
+			var restorePointName = args.Length < 1 ? $"RP_{DateTime.Now:yy-MM-dd_HH:mm:ss.fff}" : string.Join(" ", args);
+			var eventType        = EventType.BeginSystemChange;
+			var restorePointType = RestorePointType.ModifySettings;
+
+			var hresult = CreateRestorePoint(restorePointName, eventType, restorePointType);
 			
-			var restorePointName   = args.Length < 1 ? CreateNewName() : string.Join(" ", args);
+			if(hresult.Success)
+				Console.WriteLine($"Restore point {restorePointName} created.");
+			
+			else
+				Console.Error.WriteLine($"Failed to create restore point {restorePointName}. {nameof(HResult)}: {hresult}");
+
+			// I suppose you could do this, but I'm not sure if it's necessary.
+			// hresult.ThrowOnFailure();
+
+			return hresult.Code;
+		}
+
+		public static HResult CreateRestorePoint(string restorePointName, EventType eventType, RestorePointType restorePointType)
+		{
+			// uint32 CreateRestorePoint([in] String Description, [in] uint32 RestorePointType, [in] uint32 EventType);
+			
 			var managementPath     = new ManagementPath(@"\\.\ROOT\DEFAULT:SystemRestore");
 			var systemRestoreClass = new ManagementClass(managementPath);
 			var methodParameters   = systemRestoreClass.Methods["CreateRestorePoint"].InParameters;
-			
-			methodParameters.Properties["Description"].Value      = restorePointName;
-			methodParameters.Properties["EventType"].Value        = 100u;
-			methodParameters.Properties["RestorePointType"].Value = 16u;
-			
+
+			methodParameters.Properties["Description"].Value = restorePointName;
+			methodParameters.Properties["EventType"].Value = (uint) eventType;
+			methodParameters.Properties["RestorePointType"].Value = (uint) restorePointType;
+
 			var outParameters = systemRestoreClass.InvokeMethod("CreateRestorePoint", methodParameters, null);
-			var hresult       = unchecked( (int) (uint) outParameters["ReturnValue"]);
-			
-			// I suppose you could do this, but I'm not sure if it's necessary.
-			// Marshal.ThrowExceptionForHR(hresult);
+			var hresult       = (HResult) unchecked((int) (uint) outParameters["ReturnValue"]);
 			
 			return hresult;
 		}
-		
+
 		private static bool HelpShown(string[] args)
 		{
 			if(args.Length < 1 || !args[0].Contains("?"))
@@ -54,13 +75,5 @@ Got it?"
 			return true;
 		}
 		
-		private static string CreateNewName()
-		{
-			var ss = "yy-MM-dd_HH:mm:ss.fff";
-			
-			Console.WriteLine(ss);
-			
-			return $"RP_{DateTime.Now:yy-MM-dd_HH:mm:ss.fff}";
-		}
 	}
 }
