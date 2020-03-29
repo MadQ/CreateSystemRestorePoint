@@ -11,9 +11,6 @@ using System.Windows.Forms;
 
 namespace CreateSystemRestorePoint
 {
-	
-	
-	
 	class Program
 	{
 		[STAThread]
@@ -63,14 +60,21 @@ namespace CreateSystemRestorePoint
 			if(args.Length < 1 || !args[0].Contains("?"))
 				return false;
 			
-			MessageBox.Show($@"Creates a System Restore Point
+			var success = Unsafe.AttachParentConsole();
+			
+			var helpText = $@"Creates a System Restore Point
 
 usage: {Path.GetFileName(typeof(Program).Assembly.Location)} [<Restore Point Name>]
 
 The default <Restore Point Name> is ""RP_yy-MM-dd_HH:mm:ss.fff"".
+";
 
-Got it?"
-	, typeof(Program).Namespace, MessageBoxButtons.YesNo, MessageBoxIcon.Information, MessageBoxDefaultButton.Button1);
+			if(Unsafe.AttachParentConsole()) {
+				Console.WriteLine(helpText);
+				Unsafe.FreeConsole();
+			}
+			else
+				MessageBox.Show(helpText, typeof(Program).Namespace, MessageBoxButtons.OK, MessageBoxIcon.Information, MessageBoxDefaultButton.Button1);
 			
 			return true;
 		}
